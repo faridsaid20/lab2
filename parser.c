@@ -5,7 +5,7 @@
 int lookahead;
 
 void match(int);
-void start(), list(), expr(), moreterms(), term(), morefactors(), factor();
+void start(), list(), assignment(), expr(), moreterms(), term(), morefactors(), factor();
 
 void parse()  /*  parses and translates expression list  */
 {
@@ -21,14 +21,19 @@ void start ()
 
 void list()
 {
-    if (lookahead == '(' || lookahead == ID || lookahead == NUM) {
-        expr(); match(';'); list();
+    if (lookahead == ID) {
+        assignment(); match(';'); list();
     }
     else {
         /* Empty */
     }
 }
 
+void assignment()
+{
+    int id_number = token_value;
+    match(ID); emit(ID, id_number);  match('='); expr(); emit('=', id_number);
+}
 void expr ()
 {
     /* Just one production for expr, so we don't need to check lookahead */
