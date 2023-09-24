@@ -1,0 +1,499 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>Kompilatorer och interpretatorer: The very simple compiler from section 2.9</title>
+</head>
+
+<body bgcolor="#ffffff" text="#000000" link="#0000cc" vlink="#551a8b" alink="#ff0000">
+
+<h1>The very simple compiler from section 2.9</h1>
+
+This is the source code for the very simple compiler
+in section 2.9 of the (old) course book,
+Aho, Sethi, Ullman:
+<i>Compilers - Principles, Techniques, and Tools</i>, 1986.
+The code has been slightly modified to be valid and more modern C (and also C++).
+You can also download all the files as a
+<a href="29.tar.gz">compressed tar file</a>
+or as a
+<a href="29.zip">ZIP file</a>.
+(Note: Some web browsers might automatically uncompress the tar file.)
+
+<p>
+
+A recursive-descent parser has a procedure for each non-terminal.
+But in the book, the parser (in the file "parser.c")
+has been hand-optimized to eliminate tail recursion,
+using the methods described on page 52-53 in ASU-86.
+For example, the non-terminals <i>term</i> and <i>morefactors</i>
+are handled by the function <tt>term</tt>,
+which contains a <tt>while</tt> loop.
+Here, I have replaced the book´s "parse.c" with one <i>without</i> those optimizations.
+(The original file from the book, renamed "bookparser.c",
+is included in the zip and tar files.
+Do not use that file.)
+
+<p>
+
+<table border="1" cellspacing="0" cellpadding="3"><tr><td bgcolor=yellow>
+
+<b>FAQ</b>
+
+<p>
+
+<b>Q:</b> Why doesn't it work?
+<br>
+<b>A:</b> The original file from the book, renamed "bookparser.c",
+is included in the zip and tar files.
+Do not use that file.
+
+<p>
+
+<b>Q:</b> Why doesn't it work?
+<br>
+<b>A:</b> Type a semicolon (<b>;</b>) after each expression.
+
+</td></tr></table>
+
+
+<p>
+
+On a Unix or Linux system, with gcc installed,
+you can compile the program by just typing
+<tt>make</tt>.
+
+<p>
+
+Jump:
+<a href="#global.h">global.h</a> |
+<a href="#lexer.c">lexer.c</a> |
+<a href="#parser.c">parser.c</a> |
+<a href="#emitter.c">emitter.c</a> |
+<a href="#symbol.c">symbol.c</a> |
+<a href="#init.c">init.c</a> |
+<a href="#error.c">error.c</a> |
+<a href="#main.c">main.c</a> |
+<a href="#Makefile">Makefile</a>
+<br>
+Download:
+<a href="global.h">global.h</a> |
+<a href="lexer.c">lexer.c</a> |
+<a href="parser.c">parser.c</a> |
+<a href="emitter.c">emitter.c</a> |
+<a href="symbol.c">symbol.c</a> |
+<a href="init.c">init.c</a> |
+<a href="error.c">error.c</a> |
+<a href="main.c">main.c</a> |
+<a href="Makefile">Makefile</a>
+
+
+<a name="global.h">
+<h2>global.h</h2>
+
+<a href="global.h">Download</a>
+
+<blockquote>
+<pre>
+/* global.h */
+
+#include &lt;stdio.h&gt;  /* include declarations for i/o routines */
+#include &lt;ctype.h&gt;  /* ... and for character test routines */
+#include &lt;stdlib.h&gt; /* ... and for some standard routines, such as exit */
+#include &lt;string.h&gt; /* ... and for string routines */
+
+#define MAX_ID_LENGTH  128  /* for the buffer size */
+
+#define NONE   -1
+#define EOS    '\0'
+
+#define NUM    256
+#define DIV    257
+#define MOD    258
+#define ID     259
+#define DONE   260
+
+extern int token_value;   /*  value of token attribute */  
+extern int lineno;
+
+struct symentry {  /*  form of symbol table entry  */
+    char *lexeme; 
+    int  token_type;    
+};
+
+extern struct symentry symtable[];  /* symbol table  */
+
+extern void init();  /*  loads keywords into symtable  */
+extern void error(char* message);  /*  generates all error messages  */
+extern int lexan();  /*  lexical analyzer  */
+extern void parse();  /*  parses and translates expression list  */
+extern int insert(char *s, int token_type);    /*  returns position of entry for s */
+extern int lookup(char *s);         /* returns position of entry for s, or -1 if not found */
+extern void emit (int token_type, int token_value);  /*  generates output  */
+</pre>
+</blockquote>
+
+
+<a name="lexer.c">
+<h2>lexer.c</h2>
+
+<a href="lexer.c">Download</a>
+
+<blockquote>
+<pre>
+/* lexer.c */
+
+#include "global.h"
+
+char lexeme[MAX_ID_LENGTH + 1];
+int  lineno = 1;
+int  token_value = NONE;
+
+int lexan()  /*  lexical analyzer  */
+{
+    int c;
+    while(1) {
+        c = getchar();
+        if (c == ' ' || c == '\t')
+            ;  /*  strip out white space  */
+        else if (c == '\n')
+            lineno = lineno + 1;
+        else if (isdigit(c)) {  /*  c is a digit  */
+            ungetc(c, stdin);
+            scanf("%d", &amp;token_value);
+            return NUM;
+        }
+        else if (isalpha(c)) {  /*  c is a letter */
+            int id_number, chars = 0;
+            while (isalnum(c)) {  /* c is alphanumeric  */
+                lexeme[chars++] = c; 
+                if (chars &gt; MAX_ID_LENGTH)
+                    error("identifier too long");
+                c = getchar();
+            }
+            lexeme[chars] = EOS;
+            if (c != EOF)
+                ungetc(c, stdin);
+            id_number = lookup(lexeme);
+            if (id_number == -1)
+                id_number = insert(lexeme, ID);
+            token_value = id_number;
+            return symtable[id_number].token_type;
+        }
+        else if (c == EOF)
+            return DONE;
+        else {
+            token_value = NONE;
+            return c;
+        }
+    }
+}
+</pre>
+</blockquote>
+
+
+<a name="parser.c">
+<h2>parser.c</h2>
+
+<a href="parser.c">Download</a>
+
+<blockquote>
+<pre>
+/* parser.c -- without the optimizations */
+
+#include "global.h"
+
+int lookahead;
+
+void match(int);
+void start(), list(), expr(), moreterms(), term(), morefactors(), factor();
+
+void parse()  /*  parses and translates expression list  */
+{
+    lookahead = lexan();
+    start();
+}
+
+void start ()
+{
+    /* Just one production for start, so we don't need to check lookahead */
+    list(); match(DONE);
+}
+
+void list()
+{
+    if (lookahead == '(' || lookahead == ID || lookahead == NUM) {
+        expr(); match(';'); list();
+    }
+    else {
+        /* Empty */
+    }
+}
+
+void expr ()
+{
+    /* Just one production for expr, so we don't need to check lookahead */
+    term(); moreterms();
+}
+
+void moreterms()
+{
+    if (lookahead == '+') {
+        match('+'); term(); emit('+', token_value); moreterms();
+    }
+    else if (lookahead == '-') {
+        match('-'); term(); emit('-', token_value); moreterms();
+    }
+    else {
+        /* Empty */
+    }
+}
+
+void term ()
+{
+    /* Just one production for term, so we don't need to check lookahead */
+    factor(); morefactors();
+}
+
+void morefactors ()
+{
+    if (lookahead == '*') {
+        match('*'); factor(); emit('*', token_value); morefactors();
+    }
+    else if (lookahead == '/') {
+        match('/'); factor(); emit('/', token_value); morefactors();
+    }
+    else if (lookahead == DIV) {
+        match(DIV); factor(); emit(DIV, token_value); morefactors();
+    }
+    else if (lookahead == MOD) {
+        match(MOD); factor(); emit(MOD, token_value); morefactors();
+    }
+    else {
+        /* Empty */
+    }
+}
+
+void factor ()
+{
+    if (lookahead == '(') {
+        match('('); expr(); match(')');
+    }
+    else if (lookahead == ID) {
+        int id_number = token_value;
+        match(ID);
+        emit(ID, id_number);
+    }
+    else if (lookahead == NUM) {
+        int num_value = token_value;
+        match(NUM);
+        emit(NUM, num_value);
+    }
+    else
+        error("syntax error in factor");
+}
+
+void match(int t)
+{
+    if (lookahead == t)
+        lookahead = lexan();
+    else
+        error ("syntax error in match");
+}
+</pre>
+</blockquote>
+
+
+<a name="emitter.c">
+<h2>emitter.c</h2>
+
+<a href="emitter.c">Download</a>
+
+<blockquote>
+<pre>
+/* emitter.c */
+
+#include "global.h"
+
+void emit (int token_type, int token_value)  /*  generates output  */
+{
+    switch(token_type) {
+    case '+' : case '-' : case '*' : case '/':
+        printf("%c\n", token_type); break;
+    case DIV:
+        printf("DIV\n"); break; 
+    case MOD:
+        printf("MOD\n"); break;
+    case NUM:
+        printf("%d\n", token_value); break;
+    case ID:
+        printf("%s\n", symtable[token_value].lexeme); break; 
+    default:     
+        printf("[Unknown token %d, with value %d]\n", token_type, token_value);
+    }
+}
+</pre>
+</blockquote>
+
+
+<a name="symbol.c">
+<h2>symbol.c</h2>
+
+<a href="symbol.c">Download</a>
+
+<blockquote>
+<pre>
+/* symbol.c */
+
+#include "global.h"
+
+#define MAX_SYMBOLS 100  /* size of symbol table */
+
+struct symentry symtable[MAX_SYMBOLS];
+int nr_symbols = 0;    /* number of symbols in symtable  */
+
+int lookup(char *s)         /* returns position of entry for s, or -1 if not found */
+{
+    for (int p = nr_symbols - 1; p &gt;= 0; --p)
+        if (strcmp(symtable[p].lexeme, s) == 0)
+            return p;
+    return -1;
+}
+
+int insert(char *s, int token_type)    /*  returns position of entry for s */
+{
+    if (nr_symbols &gt;= MAX_SYMBOLS)
+        error("Symbol table full");
+    symtable[nr_symbols].token_type = token_type;
+    symtable[nr_symbols].lexeme = strdup(s);
+    return nr_symbols++;
+}
+</pre>
+</blockquote>
+
+
+<a name="init.c">
+<h2>init.c</h2>
+
+<a href="init.c">Download</a>
+
+<blockquote>
+<pre>
+/* init.c */
+
+#include "global.h"
+
+struct symentry keywords[] = {
+    { "div", DIV },
+    { "mod", MOD, }
+};
+
+void init()  /*  loads keywords into symtable  */
+{
+    int nr_keywords = sizeof(keywords) / sizeof(keywords[0]);
+    for (int i = 0; i &lt; nr_keywords; ++i)
+        insert(keywords[i].lexeme, keywords[i].token_type);
+}
+</pre>
+</blockquote>
+
+
+<a name="error.c">
+<h2>error.c</h2>
+
+<a href="error.c">Download</a>
+
+<blockquote>
+<pre>
+/* error.c */
+
+#include "global.h"
+
+void error(char* message)  /* generates all error messages  */
+{
+    fflush(stdout);
+    fprintf(stderr, "[Error on line %d: %s]\n", lineno, message);
+    exit(EXIT_FAILURE);  /*  unsuccessful termination  */
+}
+</pre>
+</blockquote>
+
+
+<a name="main.c">
+<h2>main.c</h2>
+
+<a href="main.c">Download</a>
+
+<blockquote>
+<pre>
+/* main.c */
+
+#include "global.h"
+
+int main(void)
+{
+    init();
+    parse();
+    exit(0);    /*  successful termination  */
+}
+</pre>
+</blockquote>
+
+
+<a name="Makefile">
+<h2>Makefile</h2>
+
+<a href="Makefile">Download</a>
+
+<blockquote>
+<pre>
+OBJECTS = lexer.o parser.o emitter.o symbol.o init.o error.o main.o 
+SOURCES = lexer.c parser.c emitter.c symbol.c init.c error.c main.c
+EXE = infix2postfix
+CFLAGS += -Wall -g
+
+$(EXE):	$(OBJECTS)
+	gcc $(CFLAGS) -o $(EXE) $(OBJECTS)
+
+main.o: 	main.c global.h
+	gcc $(CFLAGS) -c main.c
+
+lexer.o: 	lexer.c global.h
+	gcc $(CFLAGS) -c lexer.c
+
+parser.o: 	parser.c global.h
+	gcc $(CFLAGS) -c parser.c
+
+emitter.o: 	emitter.c global.h
+	gcc $(CFLAGS) -c emitter.c
+
+symbol.o: 	symbol.c global.h
+	gcc $(CFLAGS) -c symbol.c
+
+init.o: 	init.c global.h
+	gcc $(CFLAGS) -c init.c
+
+error.o: 	error.c global.h
+	gcc $(CFLAGS) -c error.c
+
+clean: 
+	rm -f $(EXE) $(OBJECTS) 29.tar.gz 29.zip *~
+
+archives: clean
+	cd ..; rm 29.tar 29.zip 29/29.tar 29/29.zip; tar -cvf 29.tar 29; gzip -9 29.tar; zip -r 29.zip 29; mv 29.zip 29/29.zip; mv 29.tar.gz 29/29.tar.gz
+</pre>
+</blockquote>
+
+<p>
+
+<hr>
+
+<font size=-1>
+<a href="http://basen.oru.se/tpy/">Thomas Padron-McCarthy</a>
+(<a href="mailto:thomas.padron-mccarthy@oru.se?subject=Kursen Kompilatorer och interpretatorer">thomas.padron-mccarthy@oru.se</a>)
+October 15, 2021
+</font>
+
+</body>
+</html>

@@ -1,0 +1,38 @@
+Part A: Modifying the grammar
+The grammars above describe a language that consists of expressions. Instead of expressions, one could change the language to consist of assignments. That is, instead of for example 10 * 3 + foo, it should understand input of the type fum = 10 * 3 + foo.
+The postfix representation of an assignment variable = value is variable value =. For example, the postfix representation of x = 17 is x 17 =, and the postfix representation of fum = 10 * 3 + foo is fum 10 3 * foo + =.
+
+To change the grammar from above to one that understands assignments, we first add a production for a new non-terminal called assignment. We also change the definition of list from a list of expressions to a list of assignments. The grammar now looks like this, with changes marked in red:
+
+
+Assume that we want to handle both assignments and expressions. Write a grammar for that.
+Answer:
+start -> list eof
+list -> expass ; list
+       | empty
+expass -> expr | assignment
+assignment -> id { print(id.lexeme) } = expr { print('=') }
+expr -> term moreterms
+moreterms -> + term { print('+') } moreterms
+       | - term { print('-') } moreterms
+       | empty
+term -> factor morefactors
+morefactors -> * factor { print('*') } morefactors
+       | / factor { print('/') } morefactors
+       | div factor { print('DIV') } morefactors
+       | mod factor { print('MOD') } morefactors
+       | empty
+factor -> ( expr )
+       | id { print(id.lexeme) }
+       | num { print(num.value) }
+
+Would it be possible to write a predictive recursive-descent parser for your grammar? (Hints: Is it ambiguous? Is it left-recursive? Are FIRST sets disjoint?)
+Answer:
+No, there are few criterias of a predictive recursive-descent parser which our grammar does not satisfy.
+1. The grammar should not be ambiguous.
+   a: I don't think our grammar is ambiguous since there are strict rule for how a expressions and assignments should look like.
+2. The grammar should not be left-recursive.
+   a: Our grammar is left-recursive in more than one places like list -> expass ; list and moreterms -> + term { print('+') } moreterms.
+3. The FIRST sets of the grammar should be disjoint.
+   a: By looking at the grammar I can tell that at least FIRST set is not disjoint which is expr and assignment can both start with an ID.
+
