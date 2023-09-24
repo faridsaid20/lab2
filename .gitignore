@@ -1,0 +1,4 @@
+*.o
+infix2postfix
+bookparser.c
+files.html

@@ -36,3 +36,18 @@ No, there are few criterias of a predictive recursive-descent parser which our g
 3. The FIRST sets of the grammar should be disjoint.
    a: By looking at the grammar I can tell that at least FIRST set is not disjoint which is expr and assignment can both start with an ID.
 
+
+PART B: Changed
+
+PART C: This one is a bit tricky because according to guidelines we still allow variables in expressions.
+So to successfully use them for calculations we need to store their values in a symbols table.
+If we don't find them there then the calculation has failed and approprate message shuld be printed out.
+
+Also I'm still not sure what does DIV mean In keywords library. So I just ignore it.
+The same for MOD. I guess it can be modulo operation but I'm not sure.
+I dont think our calculator looses a lot of functionality because of this.
+But it would be nice to know what does it mean.
+If it's nessecary I can add it later.
+
+PART D.
+
