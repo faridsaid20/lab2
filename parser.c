@@ -5,7 +5,7 @@ int lookahead;
 
 void match(int);
 void start(), list(), assignment(), expr(), moreterms(), term(), morefactors(),
-   factor();
+   exponents(), factor();
 
 void parse() /*  parses and translates expression list  */
 {
@@ -78,6 +78,7 @@ void term()
 {
    /* Just one production for term, so we don't need to check lookahead */
    factor();
+   exponents();
    morefactors();
 }
 
@@ -113,6 +114,7 @@ void morefactors()
    {
       match('*');
       factor();
+      exponents();
       emit('*', token_value);
       morefactors();
    }
@@ -120,6 +122,7 @@ void morefactors()
    {
       match('/');
       factor();
+      exponents();
       emit('/', token_value);
       morefactors();
    }
@@ -127,6 +130,7 @@ void morefactors()
    {
       match(DIV);
       factor();
+      exponents();
       emit(DIV, token_value);
       morefactors();
    }
@@ -134,8 +138,24 @@ void morefactors()
    {
       match(MOD);
       factor();
+      exponents();
       emit(MOD, token_value);
       morefactors();
+   }
+   else
+   {
+      /* Empty */
+   }
+}
+
+void exponents()
+{
+   if (lookahead == '^')
+   {
+      match('^');
+      factor();
+      emit('^', token_value);
+      exponents();
    }
    else
    {

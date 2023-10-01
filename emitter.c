@@ -21,6 +21,7 @@ void emit(int token_type, int token_value) /*  generates output  */
    case '*':
    case '/':
    case '=':
+   case '^':
       sprintf(str, "%c", token_type);
       strcpy(print_buffer[print_buffer_index++], str);
       break;
@@ -96,7 +97,8 @@ int calculateResult()
 bool isOperator(const char* str)
 {
    return strcmp(str, "+") == 0 || strcmp(str, "-") == 0
-          || strcmp(str, "*") == 0 || strcmp(str, "/") == 0;
+          || strcmp(str, "*") == 0 || strcmp(str, "/") == 0
+          || strcmp(str, "^") == 0;
 }
 
 void saveResultInSymtable(int result)
@@ -108,8 +110,7 @@ void saveResultInSymtable(int result)
    }
    else if (strlen(symtable[tokenValue].value) < resSize)
    {
-      symtable[tokenValue].value =
-         realloc(symtable[tokenValue].value, resSize);
+      symtable[tokenValue].value = realloc(symtable[tokenValue].value, resSize);
    }
    sprintf(symtable[tokenValue].value, "%d", result);
 }
@@ -131,9 +132,27 @@ int performOperation(int a, int b, const char* op)
       return a * b;
    case '/':
       return a / b;
+   case '^':
+      return exponent(a, b);
    default:
       return 0;
    }
+}
+
+int exponent(int base, int exp)
+{
+   int result = 1;
+   while (exp)
+   {
+      if (exp & 1)
+      {
+         result *= base;
+      }
+      exp >>= 1;
+      base *= base;
+   }
+
+   return result;
 }
 
 int charToInt(char* str, bool* isOk)

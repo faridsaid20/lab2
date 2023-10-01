@@ -47,3 +47,5 @@ extern int calculateResult();
 extern void printResult(int result);
 extern void saveResultInSymtable(int result);
 extern int performOperation(int a, int b, const char* op);
+
+extern int exponent(int base, int exp);

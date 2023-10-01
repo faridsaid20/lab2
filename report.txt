@@ -50,4 +50,7 @@ But it would be nice to know what does it mean.
 If it's nessecary I can add it later.
 
 PART D.
+It was more complicated than I thought.
+The calculator part was easy but the grammar was harder.
+morefactors, factor what should go efter what was tricky.
 
